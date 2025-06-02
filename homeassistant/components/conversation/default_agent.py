@@ -1310,14 +1310,20 @@ class DefaultAgent(ConversationEntity):
         Only performs strict matching with exposed entities and exact wording.
         Returns None if no match or a matching error occurred.
         """
-        result = await self.async_recognize_intent(user_input, strict_intents_only=True)
+        # Create a modified user_input for local processing context
+        # The DefaultAgent's own entity_id should be used here.
+        local_user_input = dataclasses.replace(user_input, agent_id=self.entity_id)
+
+        result = await self.async_recognize_intent(local_user_input, strict_intents_only=True)
         if not isinstance(result, RecognizeResult) or (
             intent_filter is not None and intent_filter(result)
         ):
             # No error message on failed match
             return None
 
-        response = await self._async_process_intent_result(result, user_input)
+        # Pass the modified user_input with the correct agent_id
+        response = await self._async_process_intent_result(result, local_user_input)
+
         if (
             response.response_type == intent.IntentResponseType.ERROR
             and response.error_code
